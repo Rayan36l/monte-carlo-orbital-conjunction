@@ -74,3 +74,103 @@ def score(step_function, dynamics_function, t0, state1_0, state2_0, t_start, t_e
     _, _, d_min = relative_state(s1[-1], s2[-1])
 
     return (t_tca, d_min, iters)  
+
+# TASK 5/ Optimized Score Function: caches trajectory states and checks all roots
+def score_optimized(
+    step_function,
+    dynamics_function,
+    t0,
+    state1_0,
+    state2_0,
+    t_start,
+    t_end,
+    h,
+    tol=1e-6,
+    max_iter=100,
+    return_details=False,
+):
+    """
+    Optimized conjunction score function that propagates once from t0 to t_end,
+    reuses cached bracket endpoints during bisection, and checks all roots
+    of D(t) = 0 plus window boundaries to return the global minimum distance.
+    """
+    times, states1 = propagate(step_function, dynamics_function, t0, state1_0, t_end, h)
+    _, states2 = propagate(step_function, dynamics_function, t0, state2_0, t_end, h)
+
+    i_start = np.searchsorted(times, t_start)
+    i_end = np.searchsorted(times, t_end)
+    if i_start >= len(times):
+        raise ValueError("t_start is outside the propagated time array.")
+    if i_end >= len(times):
+        i_end = len(times) - 1
+
+    D_values = np.zeros(len(times))
+    for i in range(i_start, i_end + 1):
+        D_values[i] = evaluate_D(states1[i], states2[i])
+
+    brackets = []
+    for i in range(i_start, i_end):
+        D_left = D_values[i]
+        D_right = D_values[i + 1]
+        if D_left == 0.0:
+            brackets.append((times[i], times[i], i))
+        elif D_left * D_right < 0.0:
+            brackets.append((times[i], times[i + 1], i))
+
+    def D_of_t_cached(t, left_index):
+        t_left = times[left_index]
+        state1_left = states1[left_index]
+        state2_left = states2[left_index]
+        _, local_states1 = propagate(step_function, dynamics_function, t_left, state1_left, t, h)
+        _, local_states2 = propagate(step_function, dynamics_function, t_left, state2_left, t, h)
+        return evaluate_D(local_states1[-1], local_states2[-1])
+
+    root_times = []
+    total_iters = 0
+    for t_low, t_high, left_index in brackets:
+        if t_low == t_high:
+            root_times.append(t_low)
+            continue
+
+        def local_D(t):
+            return D_of_t_cached(t, left_index)
+
+        root, iters = bisection(local_D, t_low, t_high, tol=tol, max_iter=max_iter)
+        root_times.append(root)
+        total_iters += iters
+
+    candidate_times = [t_start, t_end]
+    candidate_times.extend(root_times)
+
+    def distance_at_time(t_candidate):
+        left_index = np.searchsorted(times, t_candidate, side="right") - 1
+        left_index = max(0, min(left_index, len(times) - 1))
+        t_left = times[left_index]
+        state1_left = states1[left_index]
+        state2_left = states2[left_index]
+        _, local_states1 = propagate(step_function, dynamics_function, t_left, state1_left, t_candidate, h)
+        _, local_states2 = propagate(step_function, dynamics_function, t_left, state2_left, t_candidate, h)
+        _, _, distance = relative_state(local_states1[-1], local_states2[-1])
+        return distance
+
+    candidate_distances = np.array([distance_at_time(t_c) for t_c in candidate_times])
+    best_index = int(np.argmin(candidate_distances))
+    t_tca = candidate_times[best_index]
+    d_min = float(candidate_distances[best_index])
+
+    if return_details:
+        return {
+            "t_tca": t_tca,
+            "d_min": d_min,
+            "total_iters": total_iters,
+            "root_times": np.array(root_times),
+            "candidate_times": np.array(candidate_times),
+            "candidate_distances": candidate_distances,
+            "times": times,
+            "states1": states1,
+            "states2": states2,
+            "D_values": D_values,
+            "brackets": brackets,
+        }
+
+    return (t_tca, d_min, total_iters)
