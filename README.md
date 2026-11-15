@@ -2,13 +2,6 @@
 
 A Python numerical simulation package for two-body orbital propagation, bracket-cached Time of Closest Approach (TCA) root-finding, and parallelized Monte Carlo satellite collision probability ($P_c$) estimation.
 
-## Example Output: TCA Root-Finding
-
-To pinpoint the Time of Closest Approach (TCA), the solver tracks the range-rate indicator $D(t) = \mathbf{r}_{\text{rel}}(t) \cdot \mathbf{v}_{\text{rel}}(t)$ across the conjunction window, brackets sign changes where $D(t) = 0$, and refines the root via bisection to locate the minimum separation distance $d_{\min}$:
-
-![Approach Indicator D(t) Across Conjunction Window](assets/D_of_t.png)
-*Range-rate indicator $D(t) = \mathbf{r}_{\text{rel}}(t) \cdot \mathbf{v}_{\text{rel}}(t)$ evaluated over a $3,000\text{ s}$ two-body propagation window; zero-crossings ($D(t)=0$) bracket candidate local extrema in relative separation.*
-
 ## Overview
 
 Evaluating collision risk between orbiting spacecraft and debris requires propagating uncertain state vectors forward in time, pinpointing the exact moment of closest approach, and estimating the probability that minimum separation falls below a combined hard-body radius ($R_{\text{HBR}}$).
@@ -16,8 +9,20 @@ Evaluating collision risk between orbiting spacecraft and debris requires propag
 This repository implements a modular numerical pipeline built from first principles:
 * **Two-Body Orbital Dynamics (`orbital.dynamics`):** Cartesian gravitational equations of motion in Earth-Centered Inertial (ECI) coordinates.
 * **4th-Order Runge-Kutta Integrator (`orbital.integrators`):** Fixed-step RK4 numerical solver with boundary-clamped time stepping to prevent final-step overshoot.
-* **Cached TCA Bisection Solver (`orbital.conjunction`):** Detects sign changes in the range-rate indicator $D(t) = \mathbf{r}_{\text{rel}}(t) \cdot \mathbf{v}_{\text{rel}}(t) = 0$. Includes both a baseline solver (`score`) and a bracket-cached multi-root solver (`score_optimized`) that propagates from saved bracket endpoints rather than restarting from $t_0$ on every bisection iteration.
-* **Parallel Monte Carlo & Importance Sampling (`orbital.probability`):** Evaluates rare-event collision probabilities across $N$ uncertain $12\text{D}$ joint initial states using `multiprocessing.Pool`, computing empirical $P_c$, sample variance, $95\%$ confidence intervals, and statistical relative error.
+* **Cached TCA Bisection Solver (`orbital.conjunction`):** Detects sign changes in the range-rate indicator $D(t) = \mathbf{r}(t) \cdot \mathbf{v}(t) = 0$ (using relative position and velocity). Includes both a baseline solver (`score`) and a bracket-cached multi-root solver (`score_optimized`) that propagates from saved bracket endpoints rather than restarting from $t_0$ on every bisection iteration.
+* **Parallel Monte Carlo & Importance Sampling (`orbital.probability`):** Evaluates rare-event collision probabilities across $N$ uncertain 12D joint initial states using `multiprocessing.Pool`, computing empirical $P_c$, sample variance, 95% confidence intervals, and statistical relative error.
+
+## Example Output: TCA Root-Finding
+
+To pinpoint the Time of Closest Approach (TCA), the solver tracks the relative range-rate indicator:
+
+$$D(t) = \mathbf{r}_{\text{rel}}(t) \cdot \mathbf{v}_{\text{rel}}(t)$$
+
+across the conjunction window, brackets sign changes where $D(t) = 0$, and refines the root via bisection to locate the minimum separation distance $d_{\min}$:
+
+![Approach Indicator D(t) Across Conjunction Window](assets/D_of_t.png)
+
+> Range-rate indicator $D(t)$ evaluated over a 3,000 s two-body propagation window; zero-crossings ($D(t) = 0$) bracket candidate local extrema in relative separation.
 
 ## Repository Structure
 
