@@ -2,7 +2,12 @@
 
 A Python numerical simulation package for two-body orbital propagation, bracket-cached Time of Closest Approach (TCA) root-finding, and parallelized Monte Carlo satellite collision probability ($P_c$) estimation.
 
-![Approach Indicator D(t)](assets/D_of_t.png)
+## Example Output: TCA Root-Finding
+
+To pinpoint the Time of Closest Approach (TCA), the solver tracks the range-rate indicator $D(t) = \mathbf{r}_{\text{rel}}(t) \cdot \mathbf{v}_{\text{rel}}(t)$ across the conjunction window, brackets sign changes where $D(t) = 0$, and refines the root via bisection to locate the minimum separation distance $d_{\min}$:
+
+![Approach Indicator D(t) Across Conjunction Window](assets/D_of_t.png)
+*Range-rate indicator $D(t) = \mathbf{r}_{\text{rel}}(t) \cdot \mathbf{v}_{\text{rel}}(t)$ evaluated over a $3,000\text{ s}$ two-body propagation window; zero-crossings ($D(t)=0$) bracket candidate local extrema in relative separation.*
 
 ## Overview
 
